@@ -14,6 +14,8 @@ import PortfolioBuilder from './components/PortfolioBuilder';
 import CRMDashboard from './components/CRMDashboard';
 import PostMaker from './components/PostMaker';
 import AccountingTools from './components/AccountingTools';
+import AdminPanel from './components/AdminPanel';
+import PublicPortfolio from './components/PublicPortfolio';
 import { database } from './lib/database';
 import { emailService, auth, isDemoMode } from './lib/supabase';
 import { Menu } from 'lucide-react';

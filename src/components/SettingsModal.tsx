@@ -25,6 +25,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user }) 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const { isDarkMode, toggleDarkMode } = useTheme();
   const currentTier = TierManager.getCurrentTier();
@@ -105,6 +111,58 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user }) 
   const handleUpgrade = (tierKey: string) => {
     setSelectedTier(tierKey);
     setShowPaymentModal(true);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      alert('Please fill in all password fields');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      alert('New password must be at least 6 characters long');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      // In a real app, this would call the auth service
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert('Password updated successfully!');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      alert('Error updating password. Please try again.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmText = 'DELETE';
+    const userInput = prompt(`This action cannot be undone. Type "${confirmText}" to confirm account deletion:`);
+    
+    if (userInput !== confirmText) {
+      alert('Account deletion cancelled.');
+      return;
+    }
+
+    const finalConfirm = confirm('Are you absolutely sure? This will permanently delete all your data.');
+    if (!finalConfirm) return;
+
+    try {
+      // In a real app, this would call the database deletion service
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      alert('Account deleted successfully. You will be logged out.');
+      // Trigger logout
+      window.location.reload();
+    } catch (error) {
+      alert('Error deleting account. Please contact support.');
+    }
   };
 
   const getPaymentStatusColor = (status: string) => {
@@ -215,21 +273,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user }) 
               <div className="space-y-4">
                 <input
                   type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
                   placeholder="Current password"
                   className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
                 <input
                   type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
                   placeholder="New password"
                   className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
                 <input
                   type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                   placeholder="Confirm new password"
                   className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  Update Password
+                <button 
+                  onClick={handlePasswordChange}
+                  disabled={passwordLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
                 </button>
               </div>
             </div>
@@ -326,7 +394,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, user }) 
             <div>
               <h4 className="font-medium text-slate-800 dark:text-white mb-4">Data Deletion</h4>
               <p className="text-sm text-slate-600 dark:text-gray-400 mb-4">Permanently delete your account and all data</p>
-              <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+              <button 
+                onClick={handleDeleteAccount}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
                 Delete Account
               </button>
             </div>

@@ -8,48 +8,74 @@ import {
   Edit, 
   Trash2,
   Download,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  Target
 } from 'lucide-react';
 
+interface Budget {
+  id: string;
+  name: string;
+  totalAmount: number;
+  period: 'monthly' | 'quarterly' | 'yearly';
+  categories: BudgetCategory[];
+  status: 'active' | 'inactive' | 'completed';
+  startDate: string;
+  endDate: string;
+  created_at: string;
+}
+
+interface BudgetCategory {
+  name: string;
+  allocated: number;
+  spent: number;
+}
+
 const BudgetPlanner: React.FC = () => {
-  const [budgets, setBudgets] = useState([
+  const [budgets, setBudgets] = useState<Budget[]>([
     {
       id: '1',
       name: 'Marketing Budget 2024',
       totalAmount: 50000,
+      period: 'yearly',
       categories: [
         { name: 'Digital Advertising', allocated: 20000, spent: 15000 },
         { name: 'Content Creation', allocated: 15000, spent: 8000 },
         { name: 'Events & Conferences', allocated: 10000, spent: 12000 },
         { name: 'Tools & Software', allocated: 5000, spent: 3500 }
       ],
-      period: 'yearly',
-      status: 'active'
+      status: 'active',
+      startDate: '2024-01-01',
+      endDate: '2024-12-31',
+      created_at: '2024-01-01'
     },
     {
       id: '2',
       name: 'Operations Budget Q1',
       totalAmount: 25000,
+      period: 'quarterly',
       categories: [
         { name: 'Office Rent', allocated: 12000, spent: 12000 },
         { name: 'Utilities', allocated: 3000, spent: 2800 },
         { name: 'Supplies', allocated: 5000, spent: 3200 },
         { name: 'Maintenance', allocated: 5000, spent: 1500 }
       ],
-      period: 'quarterly',
-      status: 'active'
+      status: 'active',
+      startDate: '2024-01-01',
+      endDate: '2024-03-31',
+      created_at: '2024-01-01'
     }
   ]);
 
-  const [selectedBudget, setSelectedBudget] = useState(budgets[0]);
+  const [selectedBudget, setSelectedBudget] = useState<Budget>(budgets[0]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
 
-  const calculateTotalSpent = (budget: any) => {
-    return budget.categories.reduce((sum: number, cat: any) => sum + cat.spent, 0);
+  const calculateTotalSpent = (budget: Budget) => {
+    return budget.categories.reduce((sum, cat) => sum + cat.spent, 0);
   };
 
-  const calculateVariance = (budget: any) => {
+  const calculateVariance = (budget: Budget) => {
     const totalSpent = calculateTotalSpent(budget);
     return budget.totalAmount - totalSpent;
   };
@@ -60,7 +86,7 @@ const BudgetPlanner: React.FC = () => {
     return 'text-yellow-600';
   };
 
-  const getCategoryStatus = (category: any) => {
+  const getCategoryStatus = (category: BudgetCategory) => {
     const percentage = (category.spent / category.allocated) * 100;
     if (percentage > 100) return { status: 'over', color: 'bg-red-500' };
     if (percentage > 80) return { status: 'warning', color: 'bg-yellow-500' };
@@ -88,7 +114,9 @@ const BudgetPlanner: React.FC = () => {
     const [formData, setFormData] = useState({
       name: '',
       totalAmount: 0,
-      period: 'monthly',
+      period: 'monthly' as 'monthly' | 'quarterly' | 'yearly',
+      startDate: '',
+      endDate: '',
       categories: [{ name: '', allocated: 0 }]
     });
 
@@ -110,16 +138,35 @@ const BudgetPlanner: React.FC = () => {
       }));
     };
 
+    const removeCategory = (index: number) => {
+      if (formData.categories.length > 1) {
+        setFormData(prev => ({
+          ...prev,
+          categories: prev.categories.filter((_, i) => i !== index)
+        }));
+      }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      const newBudget = {
+      
+      if (!formData.name || !formData.totalAmount || !formData.startDate || !formData.endDate) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      const newBudget: Budget = {
         id: Date.now().toString(),
         ...formData,
         categories: formData.categories.map(cat => ({ ...cat, spent: 0 })),
-        status: 'active'
+        status: 'active',
+        created_at: new Date().toISOString()
       };
+      
       setBudgets(prev => [...prev, newBudget]);
+      setSelectedBudget(newBudget);
       onClose();
+      alert('Budget created successfully!');
     };
 
     return (
@@ -133,7 +180,7 @@ const BudgetPlanner: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
-                  Budget Name
+                  Budget Name *
                 </label>
                 <input
                   type="text"
@@ -145,7 +192,7 @@ const BudgetPlanner: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
-                  Total Amount
+                  Total Amount *
                 </label>
                 <input
                   type="number"
@@ -157,19 +204,45 @@ const BudgetPlanner: React.FC = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
-                Budget Period
-              </label>
-              <select
-                value={formData.period}
-                onChange={(e) => setFormData(prev => ({ ...prev, period: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+                  Period
+                </label>
+                <select
+                  value={formData.period}
+                  onChange={(e) => setFormData(prev => ({ ...prev, period: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                />
+              </div>
             </div>
 
             <div>
@@ -189,23 +262,34 @@ const BudgetPlanner: React.FC = () => {
               
               <div className="space-y-3">
                 {formData.categories.map((category, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-3">
+                  <div key={index} className="grid grid-cols-3 gap-3">
                     <input
                       type="text"
                       placeholder="Category name"
                       value={category.name}
                       onChange={(e) => updateCategory(index, 'name', e.target.value)}
-                      className="px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      className="col-span-2 px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                       required
                     />
-                    <input
-                      type="number"
-                      placeholder="Allocated amount"
-                      value={category.allocated}
-                      onChange={(e) => updateCategory(index, 'allocated', parseFloat(e.target.value) || 0)}
-                      className="px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                      required
-                    />
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        placeholder="Amount"
+                        value={category.allocated}
+                        onChange={(e) => updateCategory(index, 'allocated', parseFloat(e.target.value) || 0)}
+                        className="flex-1 px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        required
+                      />
+                      {formData.categories.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeCategory(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -277,6 +361,15 @@ const BudgetPlanner: React.FC = () => {
               <p className="text-lg font-bold text-slate-800 dark:text-white mt-2">
                 ${budget.totalAmount.toLocaleString()}
               </p>
+              <div className="flex items-center space-x-2 mt-2">
+                <span className={`px-2 py-1 text-xs rounded-full capitalize ${
+                  budget.status === 'active' ? 'bg-green-100 text-green-800' :
+                  budget.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {budget.status}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -391,9 +484,6 @@ const BudgetPlanner: React.FC = () => {
                   <div className="flex space-x-2">
                     <button className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded">
                       <Edit className="w-3 h-3" />
-                    </button>
-                    <button className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
-                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
